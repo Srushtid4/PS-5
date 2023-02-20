@@ -1,0 +1,222 @@
+---
+title: "assignment PS 5"
+author: "srushti desai"
+date: "2023-02-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+# load and check the data
+#load the data
+library (tidyverse)
+gapminder <- read_delim ("gapminder.csv.bz2")
+# rows
+nrow(gapminder)
+#There are '13055 rows and 25 columns'
+head(gapminder)
+# data looks good
+#Descriptive Statistics
+#1. how many countries are there?
+gapminder %>%
+select(name)%>%
+unique()
+# There are 250 countries
+#2 a How many iso-2 codes? Any with more than one country? Which countries?
+gapminder %>%
+group_by(iso2) %>%
+summarize(num = n_distinct(name)) %>%
+arrange(desc(num))
+# b
+gapminder %>%
+filter(is.na)
+group_by(name) %>%
+summarize(num = n_distinct(iso3)) %>%
+arrange(desc(num))
+#3 
+gapminder %>%
+filter(!is.na(time)) %>%
+summarize(min=min(time), max=max(time))
+#The max year is 2019 and the min is 1960
+#CO 2 Emissions
+#1 Missing CO2 emissions
+gapminder %>%
+filter(is.na(co2), is.na(co2_PC))%>%
+group_by(time)%>%
+summarize(missings = n_distinct(time))%>%
+arrange(desc(missings))%>%
+head(3)
+#
+#2
+countries <- c("Aruba", "China", "India", "Chile", "United States of America")
+library(ggplot2)
+gapminder%>%
+filter(name %in% countries)%>%
+ggplot(aes(time, co2, color=name)) +
+geom_line()+
+ggtitle("Total CO2 Emissions") +
+theme(text = element_text(size=15))
+# China has significantly higher CO2 emissions than the rest of the countries with the US second and India third. In this time period most countries have seen an overall rise in emissions.
+#3
+gapminder%>%
+  filter(name %in% countries)%>%
+  ggplot(aes(time, co2_PC, color=name)) +
+  geom_line()+
+  ggtitle("Total co2_PC Emissions") +
+  theme(text = element_text(size=15))
+#USA has higher CO2_PC currently than china and India (and the other countries).
+#4
+mean_CO2PC_2016 <- gapminder %>%
+filter (!is.na(co2_PC), !is.na(region)) %>%
+filter (time == "2016")%>%
+group_by(region) %>%
+summarise(average_co2PC_2016=mean(co2_PC))
+mean_CO2PC_1960 <- gapminder %>%
+filter (!is.na(co2_PC), !is.na(region)) %>%
+filter (time == "1960")%>%
+group_by(region) %>%
+summarise(average_co2PC_1960=mean(co2_PC))
+CO2PC_avg <- left_join(mean_CO2PC_2016, mean_CO2PC_1960, by = "region")
+CO2PC_avg
+#Average CO2 in 2016 was highest in Europe, lowest in Africa. For 1960 the highest was Americas and the lowest was Africa. Each country saw a rise from 1960 to 2016 except for Americas.
+#5
+#combined graph 
+co2pc_data_2016 <- gapminder %>%
+filter (!is.na(co2_PC), !is.na(region)) %>%
+filter (time == "2016")%>%
+group_by(region) %>%
+summarise(mean_CO2PC=mean(co2_PC))
+co2pc_data_1960 <- gapminder %>%
+filter (!is.na(co2_PC), !is.na(region)) %>%
+filter (time == "1960")%>%
+group_by(region) %>%
+summarise(mean_CO2PC=mean(co2_PC))
+combine_co2_data <- bind_rows(co2pc_data_1960, co2pc_data_2016, .id = "time")
+ggplot(combine_co2_data, aes(region, mean_CO2PC, fill=time)) +
+geom_bar(stat = "identity", position= position_dodge())
+#Visual representation of the results from previous question. Mostly an increase between 1960 to 2016 except for Americas.
+#6 
+gapminder %>%
+filter(!is.na(co2_PC), !is.na(region)) %>%
+filter(time == "2016") %>%
+group_by(region, name) %>%
+summarize(avg_co2_pc = mean(co2_PC), .groups = "drop") %>%
+arrange(region, avg_co2_pc) %>%
+group_by(region) %>%
+select(region, name, avg_co2_pc)%>%
+head(3)
+gapminder %>%
+filter(!is.na(co2_PC), !is.na(region)) %>%
+filter(time == "2016") %>%
+group_by(region, name) %>%
+summarize(avg_co2_pc = mean(co2_PC), .groups = "drop") %>%
+arrange(region, avg_co2_pc) %>%
+group_by(region) %>%
+select(region, name, avg_co2_pc)%>%
+tail(3)
+#The three highest were Oceania Palau, Oceania Australia, Oceania New Caledonia. Lowest were Africa Congo, Africa Somalia, and Africa Burundia.
+#GDP Per Capita
+#1
+gapminder_1960 <- gapminder %>%
+filter(!is.na(GDP_PC), !is.na(lifeExpectancy), !is.na(GDP_PC)) %>%
+filter(time == "1960")%>%
+group_by(region)
+ggplot(gapminder_1960, aes(x=GDP_PC, y=lifeExpectancy, size=totalPopulation, color= region)) +
+geom_point(alpha = 0.7)+
+scale_size_continuous(range = c(1, 10))+
+xlab("GDP Per Capita")+
+ylab("Life Expectancy")+
+ggtitle("GDP Per Capita vs Life Expectancy in 1960")
+#Bigger Populations seem to have lower Life expectancy  especially for Asia.
+#2
+gapminder_2019 <- gapminder %>%
+filter(!is.na(GDP_PC), !is.na(lifeExpectancy), !is.na(GDP_PC)) %>%
+filter(time == "2019")%>%
+group_by(region)
+ggplot(gapminder_2019, aes(x=GDP_PC, y=lifeExpectancy, size=totalPopulation, color= region)) +
+geom_point(alpha = 0.7)+
+scale_size_continuous(range = c(1, 10))+
+xlab("GDP Per Capita")+
+ylab("Life Expectancy")+
+ggtitle("GDP Per Capita vs Life Expectancy in 2019")
+#Bigger population has a higher Life Expectancy
+#3 Compare: There are higher Life expectancies in 2019 verus 1960 expecially for the countries with large populations as they saw huge increases.
+#4 
+region_LE_2016 <- gapminder %>%
+filter (!is.na(region), !is.na(lifeExpectancy))%>%
+filter (time == "2016")%>%
+group_by(region)%>%
+summarise(avgLE_2016 = mean(lifeExpectancy))
+region_LE_1960 <- gapminder %>%
+filter (!is.na(region), !is.na(lifeExpectancy))%>%
+filter (time == "1960")%>%
+group_by(region)%>%
+summarise(avgLE_1960 = mean(lifeExpectancy))
+avg_LE <- left_join(region_LE_2016, region_LE_1960, by = "region")
+avg_LE
+#Life expectancy is higher in 2019 than 1960 in every continent.
+#5 
+gapminder %>%
+filter(!is.na(region), !is.na(lifeExpectancy))%>%
+filter(time %in% c("1960", "2019"))%>%
+group_by(region, time)%>%
+summarize(LE_avg = mean(lifeExpectancy))%>%
+mutate(prev = lag(LE_avg), growth = LE_avg - prev)
+#Growth is not there in 1960 because there are no prev values but overall the countries had an increase in growth over time.
+#6
+
+gdp_years <- gapminder %>%
+  filter(time == 1960 | time == 2019)
+  ggplot(data = gdp_years, aes(x=GDP_PC, fill=as.factor(time))) +
+  geom_histogram()
+#1960 has a lower GDP than 2019 did.
+#7
+
+rank_1960 <- gapminder %>%
+select(name, time, lifeExpectancy) %>% 
+filter(!is.na(name), !is.na(time), !is.na(lifeExpectancy)) %>%
+filter(time == "1960") %>% 
+mutate(rank = rank(desc(lifeExpectancy))) %>% 
+filter(name == "United States of America")
+rank_1960
+rank_2019 <- gapminder %>%
+select(name, time, lifeExpectancy) %>% 
+filter(!is.na(name), !is.na(time), !is.na(lifeExpectancy)) %>%
+filter(time == "2019") %>% 
+mutate(rank = rank(desc(lifeExpectancy))) %>% 
+filter(name == "United States of America")
+rank_2019
+#USA Rank went down in rank from 17 in 1960 to 46 in 2019
+#8
+
+numCountries <- gapminder %>%
+select(name, time, lifeExpectancy) %>% 
+filter(!is.na(name), !is.na(time), !is.na(lifeExpectancy)) %>%
+filter(time == "2019") %>% 
+select(name)%>%
+unique() %>%
+summarise(num = n_distinct(name))
+rank_2019$rank/numCountries
+# Percent of the rank was 23.46 percent for 2019 which is much lower than 1960.
+#Hours Spent on this Problem Set: 10 to 12 hours
